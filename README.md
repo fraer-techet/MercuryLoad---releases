@@ -1,89 +1,107 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
+<Window x:Class="MacDock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MacDock" Height="100" Width="800"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False"
+        SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded">
 
-namespace MacDock
-{
-    // Класс, который описывает одно приложение в доке
-    public class DockApp
-    {
-        public string Letter { get; set; }   // Буква, которая будет на иконке
-        public string AppPath { get; set; }  // Путь к программе на компе
-        public Brush Color { get; set; }     // Цвет иконки
-    }
+    <!-- Добавляем меню по правому клику для закрытия дока -->
+    <Window.ContextMenu>
+        <ContextMenu Background="#202020" Foreground="White" BorderBrush="#40FFFFFF">
+            <MenuItem Header="Выйти из дока" Click="ExitMenu_Click" />
+        </ContextMenu>
+    </Window.ContextMenu>
 
-    public partial class MainWindow : Window
-    {
-        [DllImport("user32.dll")]
-        private static extern int GetWindowLong(IntPtr hwnd, int index);
-
-        [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_NOACTIVATE = 0x08000000;
-
-        public MainWindow()
-        {
-            InitializeComponent();
-            LoadApps(); // Загружаем наши приложения при старте
-        }
-
-        // Заполняем док программами
-        private void LoadApps()
-        {
-            var myApps = new List<DockApp>
-            {
-                new DockApp { Letter = "E", AppPath = "explorer.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E2B022")) }, // Желтый проводник
-                new DockApp { Letter = "W", AppPath = "msedge.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0078D7")) },   // Синий Edge
-                new DockApp { Letter = "N", AppPath = "notepad.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50")) },  // Зеленый блокнот
-                new DockApp { Letter = "C", AppPath = "calc.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#607D8B")) }      // Серый калькулятор
-            };
-
-            // Привязываем список к дизайну
-            AppList.ItemsSource = myApps;
-        }
-
-        // Метод, который срабатывает при клике на иконку
-        private void AppIcon_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            // Узнаем, на какую именно иконку нажали
-            var border = sender as System.Windows.FrameworkElement;
-            var app = border.DataContext as DockApp;
-
-            if (app != null)
-            {
-                try
-                {
-                    // Пытаемся запустить программу
-                    Process.Start(new ProcessStartInfo(app.AppPath) { UseShellExecute = true });
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Не удалось запустить: " + ex.Message);
-                }
-            }
-        }
-
-        private void Window_SourceInitialized(object sender, EventArgs e)
-        {
-            IntPtr hwnd = new WindowInteropHelper(this).Handle;
-            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Ставим окно по центру
-            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
+    <Grid VerticalAlignment="Bottom">
+        <Border Margin="10,0,10,10" CornerRadius="20" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+            <Border.Background>
+                <SolidColorBrush Color="#D9151515"/> 
+            </Border.Background>
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#50FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.BorderThickness>1,1,1,0</Border.BorderThickness>
             
-            // Прижимаем в САМЫЙ низ экрана (на уровень панели задач)
-            this.Top = SystemParameters.PrimaryScreenHeight - this.Height;
-        }
-    }
-}
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="25" ShadowDepth="10" Opacity="0.6" Direction="270"/>
+            </Border.Effect>
+
+            <ItemsControl x:Name="AppList" Margin="12,10,12,10">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="50" Height="50" Margin="8,0,8,0" 
+                                Background="{Binding Color}" CornerRadius="14" 
+                                Cursor="Hand" MouseLeftButtonUp="AppIcon_Click">
+                            
+                            <!-- ТЕПЕРЬ ТУТ ГРУППА ТРАНСФОРМАЦИЙ (Увеличение + Подпрыгивание) -->
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" CenterX="25" CenterY="50" />
+                                    <TranslateTransform Y="0" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+
+                            <!-- УЛУЧШЕННЫЕ АНИМАЦИИ НАВЕДЕНИЯ -->
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <EventTrigger RoutedEvent="MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <!-- CubicEase делает анимацию маслянистой -->
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.5" Duration="0:0:0.2">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.5" Duration="0:0:0.2">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <TextBlock Text="{Binding Letter}" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                       Foreground="White" FontSize="26" FontWeight="Bold">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="2" Opacity="0.5"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</Window>
