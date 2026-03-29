@@ -1,140 +1,101 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
+<Window x:Class="MacDock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MacDock" Height="110" Width="800"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False"
+        SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded">
 
-namespace MacDock
-{
-    public class DockApp
-    {
-        public string AppName { get; set; } = string.Empty;
-        public string AppPath { get; set; } = string.Empty;
-        public ImageSource? IconImage { get; set; }
-    }
+    <Window.ContextMenu>
+        <ContextMenu Background="#1A1A1A" Foreground="White" BorderBrush="#33FFFFFF">
+            <MenuItem Header="Настройки дока (Скоро)" IsEnabled="False"/>
+            <Separator Background="#33FFFFFF"/>
+            <MenuItem Header="Выйти" Click="ExitMenu_Click" />
+        </ContextMenu>
+    </Window.ContextMenu>
 
-    public partial class MainWindow : Window
-    {
-        [DllImport("user32.dll")]
-        private static extern int GetWindowLong(IntPtr hwnd, int index);
-        [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+    <Grid VerticalAlignment="Bottom">
+        <Border Margin="10,0,10,10" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Background="#D9151515" BorderThickness="1,1,1,0">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="10" Opacity="0.5" Direction="270"/>
+            </Border.Effect>
 
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_NOACTIVATE = 0x08000000;
+            <ItemsControl x:Name="AppList" Margin="15,10,15,10">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-        public MainWindow()
-        {
-            InitializeComponent();
-            
-            try
-            {
-                LoadApps();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show("Ошибка при загрузке: " + ex.Message);
-            }
-        }
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="50" Height="50" Margin="8,0,8,0" 
+                                Cursor="Hand" MouseLeftButtonUp="AppIcon_Click"
+                                Background="Transparent"
+                                ToolTip="{Binding AppName}">
+                            
+                            <Border.RenderTransformOrigin>
+                                <Point X="0.5" Y="1"/>
+                            </Border.RenderTransformOrigin>
 
-        private void LoadApps()
-        {
-            var myApps = new List<DockApp>();
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                    <TranslateTransform Y="0" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
 
-            string[] defaultApps = {
-                @"C:\Windows\explorer.exe",
-                @"C:\Windows\system32\notepad.exe",
-                @"C:\Windows\system32\calc.exe",
-                @"C:\Windows\system32\cmd.exe"
-            };
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Panel.ZIndex" Value="0"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Panel.ZIndex" Value="100"/>
+                                        </Trigger>
+                                        <EventTrigger RoutedEvent="MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.6" Duration="0:0:0.15">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.6" Duration="0:0:0.15">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
 
-            foreach (string path in defaultApps)
-            {
-                if (File.Exists(path))
-                {
-                    myApps.Add(new DockApp
-                    {
-                        AppName = Path.GetFileNameWithoutExtension(path),
-                        AppPath = path,
-                        IconImage = GetIconFromFile(path)
-                    });
-                }
-            }
-
-            AppList.ItemsSource = myApps;
-        }
-
-        private ImageSource? GetIconFromFile(string filePath)
-        {
-            try
-            {
-                using (System.Drawing.Icon? sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath))
-                {
-                    if (sysIcon != null)
-                    {
-                        return Imaging.CreateBitmapSourceFromHIcon(
-                            sysIcon.Handle,
-                            Int32Rect.Empty,
-                            BitmapSizeOptions.FromEmptyOptions());
-                    }
-                }
-            }
-            catch { } 
-            return null;
-        }
-
-        private async void AppIcon_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            var border = sender as FrameworkElement;
-            var app = border?.DataContext as DockApp;
-
-            if (app != null && border != null)
-            {
-                var transformGroup = border.RenderTransform as TransformGroup;
-                var translate = transformGroup?.Children[1] as TranslateTransform;
-
-                if (translate != null)
-                {
-                    DoubleAnimation bounceAnim = new DoubleAnimation {
-                        To = -15,
-                        Duration = TimeSpan.FromMilliseconds(150),
-                        AutoReverse = true,
-                        RepeatBehavior = new RepeatBehavior(1),
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                    };
-                    translate.BeginAnimation(TranslateTransform.YProperty, bounceAnim);
-                }
-
-                await Task.Delay(100);
-                try {
-                    Process.Start(new ProcessStartInfo(app.AppPath) { UseShellExecute = true });
-                } catch { }
-            }
-        }
-
-        private void ExitMenu_Click(object sender, RoutedEventArgs e)
-        {
-            System.Windows.Application.Current.Shutdown();
-        }
-
-        private void Window_SourceInitialized(object? sender, EventArgs e)
-        {
-            IntPtr hwnd = new WindowInteropHelper(this).Handle;
-            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
-            this.Top = SystemParameters.PrimaryScreenHeight - this.Height;
-        }
-    }
-}
+                            <Image Source="{Binding IconImage}" Stretch="Uniform">
+                                <Image.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="5" ShadowDepth="2" Opacity="0.4"/>
+                                </Image.Effect>
+                            </Image>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</Window>
