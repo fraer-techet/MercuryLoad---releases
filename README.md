@@ -1,112 +1,142 @@
-<Window x:Class="MacDock.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MacDock" Height="90" Width="800"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False"
-        SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded">
+using System;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
-    <Window.ContextMenu>
-        <ContextMenu Background="#1A1A1A" Foreground="White" BorderBrush="#33FFFFFF">
-            <MenuItem Header="Настройки дизайна (Скоро)" IsEnabled="False"/>
-            <Separator Background="#33FFFFFF"/>
-            <MenuItem Header="Выйти из дока" Click="ExitMenu_Click" />
-        </ContextMenu>
-    </Window.ContextMenu>
+namespace MacDock
+{
+    public class DockApp
+    {
+        public string AppName { get; set; } = string.Empty;
+        public string AppPath { get; set; } = string.Empty;
+        public ImageSource? IconImage { get; set; }
+        public IntPtr WindowHandle { get; set; } // Уникальный номер окна в Windows
+        public double IndicatorOpacity { get; set; } = 0.0; // 1.0 - светится, 0.0 - невидима
+    }
 
-    <Grid VerticalAlignment="Bottom">
-        <Border Margin="10,0,10,10" CornerRadius="18" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Background="#D9151515" BorderThickness="1,1,1,0">
-            <Border.BorderBrush>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#40FFFFFF" Offset="0.0" />
-                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.BorderBrush>
-            <Border.Effect>
-                <DropShadowEffect Color="Black" BlurRadius="25" ShadowDepth="8" Opacity="0.5" Direction="270"/>
-            </Border.Effect>
+    public partial class MainWindow : Window
+    {
+        // --- МАГИЯ WINDOWS API ДЛЯ РАБОТЫ С ОКНАМИ ---
+        [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hwnd, int index);
+        [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+        [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern int GetWindowTextLength(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
-            <ItemsControl x:Name="AppList" Margin="12,8,12,6">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int SW_RESTORE = 9; // Команда развернуть окно
 
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="6,0,6,0" VerticalAlignment="Bottom">
-                            
-                            <!-- Сама иконка -->
-                            <Border Width="40" Height="40" Cursor="Hand" MouseLeftButtonUp="AppIcon_Click"
-                                    Background="Transparent" ToolTip="{Binding AppName}">
-                                
-                                <Border.RenderTransformOrigin>
-                                    <Point X="0.5" Y="1"/>
-                                </Border.RenderTransformOrigin>
+        // Список, который автоматически обновляет интерфейс
+        private ObservableCollection<DockApp> openApps = new ObservableCollection<DockApp>();
+        private DispatcherTimer scannerTimer = new DispatcherTimer();
 
-                                <Border.RenderTransform>
-                                    <TransformGroup>
-                                        <ScaleTransform ScaleX="1" ScaleY="1" />
-                                        <TranslateTransform Y="0" />
-                                    </TransformGroup>
-                                </Border.RenderTransform>
+        public MainWindow()
+        {
+            InitializeComponent();
+            AppList.ItemsSource = openApps;
 
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Panel.ZIndex" Value="0"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Panel.ZIndex" Value="100"/>
-                                            </Trigger>
-                                            <EventTrigger RoutedEvent="MouseEnter">
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.5" Duration="0:0:0.15">
-                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.5" Duration="0:0:0.15">
-                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </EventTrigger>
-                                            <EventTrigger RoutedEvent="MouseLeave">
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.25">
-                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.25">
-                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </EventTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
+            // Настраиваем радар (он будет сканировать окна раз в секунду)
+            scannerTimer.Interval = TimeSpan.FromSeconds(1);
+            scannerTimer.Tick += ScannerTimer_Tick;
+            scannerTimer.Start();
+        }
 
-                                <Image Source="{Binding IconImage}" Stretch="Uniform">
-                                    <Image.Effect>
-                                        <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="2" Opacity="0.4"/>
-                                    </Image.Effect>
-                                </Image>
-                            </Border>
-                            
-                            <!-- ИНДИКАТОР ЗАПУЩЕННОГО ПРИЛОЖЕНИЯ (Белая точка) -->
-                            <Ellipse Width="4" Height="4" Fill="White" Margin="0,4,0,0" 
-                                     Opacity="{Binding IndicatorOpacity}">
-                                <Ellipse.Effect>
-                                    <DropShadowEffect Color="White" BlurRadius="5" ShadowDepth="0"/>
-                                </Ellipse.Effect>
-                            </Ellipse>
-                            
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Border>
-    </Grid>
-</Window>
+        // --- ТОТ САМЫЙ СКАНЕР ОКОН ---
+        private void ScannerTimer_Tick(object? sender, EventArgs e)
+        {
+            openApps.Clear(); // Временно очищаем док перед сканированием (позже сделаем плавно)
+
+            // Просим Windows перечислить все-все окна
+            EnumWindows(delegate (IntPtr hWnd, IntPtr lParam)
+            {
+                // Если окно невидимое или у него нет названия - пропускаем (это мусор)
+                if (!IsWindowVisible(hWnd) || GetWindowTextLength(hWnd) == 0)
+                    return true;
+
+                // Узнаем, какому процессу принадлежит окно
+                GetWindowThreadProcessId(hWnd, out uint processId);
+                
+                try
+                {
+                    Process proc = Process.GetProcessById((int)processId);
+                    string path = proc.MainModule?.FileName ?? "";
+
+                    // Отсеиваем саму нашу программу и системный мусор
+                    if (!string.IsNullOrEmpty(path) && !path.Contains("MacDock") && !path.Contains("ApplicationFrameHost"))
+                    {
+                        openApps.Add(new DockApp
+                        {
+                            AppName = proc.ProcessName,
+                            AppPath = path,
+                            WindowHandle = hWnd,
+                            IconImage = GetIconFromFile(path),
+                            IndicatorOpacity = 1.0 // Включаем белую точку!
+                        });
+                    }
+                }
+                catch { } // Игнорируем защищенные системные процессы (антивирусы и т.д.)
+
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        private ImageSource? GetIconFromFile(string filePath)
+        {
+            try
+            {
+                using (System.Drawing.Icon? sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath))
+                {
+                    if (sysIcon != null)
+                        return Imaging.CreateBitmapSourceFromHIcon(sysIcon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        // --- ЛОГИКА КЛИКА ПО ОТКРЫТОМУ ОКНУ ---
+        private void AppIcon_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var border = sender as FrameworkElement;
+            var app = border?.DataContext as DockApp;
+
+            if (app != null)
+            {
+                // Если окно уже существует - разворачиваем его и выводим на передний план!
+                ShowWindow(app.WindowHandle, SW_RESTORE);
+                SetForegroundWindow(app.WindowHandle);
+            }
+        }
+
+        private void ExitMenu_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Application.Current.Shutdown();
+        }
+
+        private void Window_SourceInitialized(object? sender, EventArgs e)
+        {
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
+            this.Top = SystemParameters.PrimaryScreenHeight - this.Height;
+        }
+    }
+}
