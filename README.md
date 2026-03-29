@@ -1,53 +1,39 @@
-<Window x:Class="MacDock.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MacDock" Height="90" Width="600"
-        WindowStyle="None" 
-        AllowsTransparency="True" 
-        Background="Transparent"
-        Topmost="True" 
-        ShowInTaskbar="False"
-        SourceInitialized="Window_SourceInitialized"
-        Loaded="Window_Loaded">
-    
-    <Grid>
-        <!-- Стеклянная подложка дока -->
-        <Border Margin="10,10,10,15" CornerRadius="20">
-            <!-- Сложный градиент для эффекта матового стекла (как в macOS) -->
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#50FFFFFF" Offset="0.0" />
-                    <GradientStop Color="#30FFFFFF" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.Background>
-            
-            <!-- Рамка с бликом (верхняя грань чуть светлее) -->
-            <Border.BorderBrush>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#60FFFFFF" Offset="0.0" />
-                    <GradientStop Color="#10FFFFFF" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.BorderBrush>
-            <Border.BorderThickness>1,1,1,1</Border.BorderThickness>
-            
-            <!-- Красивая мягкая тень -->
-            <Border.Effect>
-                <DropShadowEffect Color="Black" BlurRadius="25" ShadowDepth="10" Opacity="0.3" Direction="270"/>
-            </Border.Effect>
+using System;
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
 
-            <!-- Контейнер для будущих иконок -->
-            <StackPanel x:Name="DockIconsPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="Подготовка системы завершена!" 
-                           Foreground="#E0FFFFFF" 
-                           FontFamily="Segoe UI" 
-                           FontSize="16" 
-                           FontWeight="SemiBold"
-                           Margin="20,0,20,0">
-                    <TextBlock.Effect>
-                        <DropShadowEffect Color="Black" BlurRadius="5" ShadowDepth="1" Opacity="0.5"/>
-                    </TextBlock.Effect>
-                </TextBlock>
-            </StackPanel>
-        </Border>
-    </Grid>
-</Window>
+namespace MacDock
+{
+    public partial class MainWindow : Window
+    {
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TOOLWINDOW = 0x00000080; 
+        private const int WS_EX_NOACTIVATE = 0x08000000; 
+
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private void Window_SourceInitialized(object sender, EventArgs e)
+        {
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Rect workArea = SystemParameters.WorkArea;
+            this.Left = workArea.Left + (workArea.Width - this.Width) / 2;
+            this.Top = workArea.Bottom - this.Height;
+        }
+    }
+}
