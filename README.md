@@ -1,108 +1,138 @@
-<Window x:Class="MacDock.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MacDock" Height="110" Width="800"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False"
-        SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded">
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing; // Для работы с иконками
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 
-    <Window.ContextMenu>
-        <ContextMenu Background="#1A1A1A" Foreground="White" BorderBrush="#33FFFFFF">
-            <MenuItem Header="Настройки дока (Скоро)" IsEnabled="False"/>
-            <Separator Background="#33FFFFFF"/>
-            <MenuItem Header="Выйти" Click="ExitMenu_Click" />
-        </ContextMenu>
-    </Window.ContextMenu>
+namespace MacDock
+{
+    // Модель нашего приложения (теперь с настоящей картинкой!)
+    public class DockApp
+    {
+        public string AppName { get; set; }   // Название (для подсказки при наведении)
+        public string AppPath { get; set; }   // Путь к .exe файлу
+        public ImageSource IconImage { get; set; } // Настоящая картинка иконки
+    }
 
-    <Grid VerticalAlignment="Bottom">
-        <!-- Тот самый красивый стеклянный док -->
-        <Border Margin="10,0,10,10" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Background="#D9151515" BorderThickness="1,1,1,0">
-            <Border.BorderBrush>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#40FFFFFF" Offset="0.0" />
-                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.BorderBrush>
-            <Border.Effect>
-                <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="10" Opacity="0.5" Direction="270"/>
-            </Border.Effect>
+    public partial class MainWindow : Window
+    {
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
-            <ItemsControl x:Name="AppList" Margin="15,10,15,10">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <!-- Панель, где лежат иконки -->
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
 
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <!-- Контейнер для НАСТОЯЩЕЙ иконки -->
-                        <Border Width="50" Height="50" Margin="8,0,8,0" 
-                                Cursor="Hand" MouseLeftButtonUp="AppIcon_Click"
-                                Background="Transparent"
-                                ToolTip="{Binding AppName}"> <!-- Всплывающее название при наведении! -->
-                            
-                            <!-- Точка роста: Центр по ширине (0.5), Самый низ по высоте (1) -->
-                            <Border.RenderTransformOrigin>
-                                <Point X="0.5" Y="1"/>
-                            </Border.RenderTransformOrigin>
+        public MainWindow()
+        {
+            InitializeComponent();
+            LoadApps(); 
+        }
 
-                            <!-- Трансформации: 0 - Масштаб, 1 - Прыжок -->
-                            <Border.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform ScaleX="1" ScaleY="1" />
-                                    <TranslateTransform Y="0" />
-                                </TransformGroup>
-                            </Border.RenderTransform>
+        private void LoadApps()
+        {
+            var myApps = new List<DockApp>();
 
-                            <!-- АНИМАЦИИ НАВЕДЕНИЯ (ИДЕАЛЬНАЯ ПЛАВНОСТЬ) -->
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <EventTrigger RoutedEvent="MouseEnter">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.6" Duration="0:0:0.15">
-                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.6" Duration="0:0:0.15">
-                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                            <!-- Делаем иконку поверх остальных при наведении -->
-                                            <Setter Property="Panel.ZIndex" Value="100"/> 
-                                        </EventTrigger>
-                                        <EventTrigger RoutedEvent="MouseLeave">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.25">
-                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.25">
-                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                            <Setter Property="Panel.ZIndex" Value="0"/>
-                                        </EventTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
+            // Список путей к стандартным программам (ты потом сможешь добавлять сюда ЛЮБЫЕ свои игры и проги)
+            string[] defaultApps = {
+                @"C:\Windows\explorer.exe", // Проводник
+                @"C:\Windows\system32\notepad.exe", // Блокнот
+                @"C:\Windows\system32\calc.exe", // Калькулятор
+                @"C:\Windows\system32\cmd.exe" // Командная строка
+            };
 
-                            <!-- САМА КАРТИНКА ПРИЛОЖЕНИЯ -->
-                            <Image Source="{Binding IconImage}" Stretch="Uniform">
-                                <Image.Effect>
-                                    <!-- Легкая тень под самой иконкой для объема -->
-                                    <DropShadowEffect Color="Black" BlurRadius="5" ShadowDepth="2" Opacity="0.4"/>
-                                </Image.Effect>
-                            </Image>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Border>
-    </Grid>
-</Window>
+            foreach (string path in defaultApps)
+            {
+                if (File.Exists(path))
+                {
+                    myApps.Add(new DockApp
+                    {
+                        AppName = Path.GetFileNameWithoutExtension(path), // Берем название файла
+                        AppPath = path,
+                        IconImage = GetIconFromFile(path) // Магическая функция получения иконки!
+                    });
+                }
+            }
+
+            AppList.ItemsSource = myApps;
+        }
+
+        // --- ФУНКЦИЯ ИЗВЛЕЧЕНИЯ НАСТОЯЩИХ ИКОНОК ИЗ EXE ---
+        private ImageSource GetIconFromFile(string filePath)
+        {
+            try
+            {
+                // Вытаскиваем иконку средствами Windows
+                using (Icon sysIcon = Icon.ExtractAssociatedIcon(filePath))
+                {
+                    // Конвертируем в формат, понятный нашему красивому интерфейсу (WPF)
+                    return Imaging.CreateBitmapSourceFromHIcon(
+                        sysIcon.Handle,
+                        Int32Rect.Empty,
+                        BitmapSizeOptions.FromEmptyOptions());
+                }
+            }
+            catch
+            {
+                return null; // Если иконки нет, вернет пустоту (но она всегда есть у exe)
+            }
+        }
+
+        // --- ИДЕАЛЬНЫЙ, СОЧНЫЙ И КОРОТКИЙ ПРЫЖОК ПРИ КЛИКЕ ---
+        private async void AppIcon_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var border = sender as FrameworkElement;
+            var app = border.DataContext as DockApp;
+
+            if (app != null && border != null)
+            {
+                var transformGroup = border.RenderTransform as TransformGroup;
+                var translate = transformGroup.Children[1] as TranslateTransform;
+
+                // Аккуратный прыжок на 15 пикселей вверх
+                DoubleAnimation bounceAnim = new DoubleAnimation {
+                    To = -15, 
+                    Duration = TimeSpan.FromMilliseconds(150), // Быстро вверх
+                    AutoReverse = true, // И сразу плавно вниз
+                    RepeatBehavior = new RepeatBehavior(1), 
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                translate.BeginAnimation(TranslateTransform.YProperty, bounceAnim);
+
+                // Даем 100 миллисекунд насладиться началом прыжка и запускаем программу!
+                await Task.Delay(100); 
+                try {
+                    Process.Start(new ProcessStartInfo(app.AppPath) { UseShellExecute = true });
+                } catch { }
+            }
+        }
+
+        private void ExitMenu_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+
+        private void Window_SourceInitialized(object sender, EventArgs e)
+        {
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
+            this.Top = SystemParameters.PrimaryScreenHeight - this.Height;
+        }
+    }
+}
