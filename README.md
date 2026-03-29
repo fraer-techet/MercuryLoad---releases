@@ -1,156 +1,108 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
+<Window x:Class="MacDock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MacDock" Height="110" Width="800"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False"
+        SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded">
 
-namespace MacDock
-{
-    public class DockApp
-    {
-        public string Letter { get; set; }   
-        public string AppPath { get; set; }  
-        public Brush Color { get; set; }     
-    }
+    <Window.ContextMenu>
+        <ContextMenu Background="#1A1A1A" Foreground="White" BorderBrush="#33FFFFFF">
+            <MenuItem Header="Настройки дока (Скоро)" IsEnabled="False"/>
+            <Separator Background="#33FFFFFF"/>
+            <MenuItem Header="Выйти" Click="ExitMenu_Click" />
+        </ContextMenu>
+    </Window.ContextMenu>
 
-    public partial class MainWindow : Window
-    {
-        [DllImport("user32.dll")]
-        private static extern int GetWindowLong(IntPtr hwnd, int index);
+    <Grid VerticalAlignment="Bottom">
+        <!-- Тот самый красивый стеклянный док -->
+        <Border Margin="10,0,10,10" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Background="#D9151515" BorderThickness="1,1,1,0">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="10" Opacity="0.5" Direction="270"/>
+            </Border.Effect>
 
-        [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+            <ItemsControl x:Name="AppList" Margin="15,10,15,10">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <!-- Панель, где лежат иконки -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_NOACTIVATE = 0x08000000;
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- Контейнер для НАСТОЯЩЕЙ иконки -->
+                        <Border Width="50" Height="50" Margin="8,0,8,0" 
+                                Cursor="Hand" MouseLeftButtonUp="AppIcon_Click"
+                                Background="Transparent"
+                                ToolTip="{Binding AppName}"> <!-- Всплывающее название при наведении! -->
+                            
+                            <!-- Точка роста: Центр по ширине (0.5), Самый низ по высоте (1) -->
+                            <Border.RenderTransformOrigin>
+                                <Point X="0.5" Y="1"/>
+                            </Border.RenderTransformOrigin>
 
-        public MainWindow()
-        {
-            InitializeComponent();
-            LoadApps(); 
-        }
+                            <!-- Трансформации: 0 - Масштаб, 1 - Прыжок -->
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                    <TranslateTransform Y="0" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
 
-        private void LoadApps()
-        {
-            var myApps = new List<DockApp>
-            {
-                new DockApp { Letter = "E", AppPath = "explorer.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E2B022")) }, 
-                new DockApp { Letter = "W", AppPath = "msedge.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0078D7")) },   
-                new DockApp { Letter = "N", AppPath = "notepad.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50")) },  
-                new DockApp { Letter = "C", AppPath = "calc.exe", Color = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#607D8B")) }      
-            };
+                            <!-- АНИМАЦИИ НАВЕДЕНИЯ (ИДЕАЛЬНАЯ ПЛАВНОСТЬ) -->
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <EventTrigger RoutedEvent="MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.6" Duration="0:0:0.15">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.6" Duration="0:0:0.15">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                            <!-- Делаем иконку поверх остальных при наведении -->
+                                            <Setter Property="Panel.ZIndex" Value="100"/> 
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                            <Setter Property="Panel.ZIndex" Value="0"/>
+                                        </EventTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
 
-            AppList.ItemsSource = myApps;
-        }
-
-        private async void AppIcon_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            var border = sender as FrameworkElement;
-            var app = border.DataContext as DockApp;
-
-            if (app != null && border != null)
-            {
-                // --- 1. УЛУЧШЕННЫЙ И ОСЛАБЛЕННЫЙ BOUNCE (ПРЫЖОК) ---
-                var transformGroup = border.RenderTransform as TransformGroup;
-                var translate = transformGroup.Children[1] as TranslateTransform;
-
-                DoubleAnimation bounceAnim = new DoubleAnimation {
-                    To = -8, // Прыжок стал очень маленьким (всего 8 пикселей)
-                    Duration = TimeSpan.FromMilliseconds(120), // Очень быстрый
-                    AutoReverse = true, // Сразу возвращается назад
-                    RepeatBehavior = new RepeatBehavior(1), // Делает это только один раз
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                };
-                translate.BeginAnimation(TranslateTransform.YProperty, bounceAnim);
-
-
-                // --- 2. ИЛЛЮЗИЯ ОТКРЫТИЯ ПРИЛОЖЕНИЯ (ZOOM ИЗ ДОКА) ---
-                
-                // Вычисляем точную позицию иконки на экране монитора
-                Point screenPoint = border.PointToScreen(new Point(0, 0));
-                
-                // Учитываем масштаб Windows (DPI), чтобы анимация была ровно на месте иконки
-                PresentationSource source = PresentationSource.FromVisual(this);
-                double dpiScale = source != null ? source.CompositionTarget.TransformToDevice.M11 : 1.0;
-                
-                // Создаем невидимое прозрачное окно на весь экран для анимации
-                Window illusionWindow = new Window {
-                    WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = Brushes.Transparent,
-                    Topmost = true, ShowInTaskbar = false, IsHitTestVisible = false,
-                    Left = 0, Top = 0, Width = SystemParameters.PrimaryScreenWidth, Height = SystemParameters.PrimaryScreenHeight
-                };
-
-                Canvas canvas = new Canvas();
-                illusionWindow.Content = canvas;
-
-                // Создаем клона нашей иконки
-                Border fakeIcon = new Border {
-                    Width = border.ActualWidth, Height = border.ActualHeight,
-                    Background = app.Color, CornerRadius = new CornerRadius(14),
-                    Child = new TextBlock { 
-                        Text = app.Letter, HorizontalAlignment = HorizontalAlignment.Center, 
-                        VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.White, 
-                        FontSize = 26, FontWeight = FontWeights.Bold 
-                    }
-                };
-
-                // Размещаем клона ровно поверх настоящей иконки
-                Canvas.SetLeft(fakeIcon, screenPoint.X / dpiScale);
-                Canvas.SetTop(fakeIcon, screenPoint.Y / dpiScale);
-                canvas.Children.Add(fakeIcon);
-
-                // Настраиваем трансформацию для клона (увеличение из центра)
-                ScaleTransform scaleTransform = new ScaleTransform(1, 1, border.ActualWidth / 2, border.ActualHeight / 2);
-                fakeIcon.RenderTransform = scaleTransform;
-
-                illusionWindow.Show();
-
-                // Запускаем анимацию "Взрыва/Увеличения" клона иконки
-                DoubleAnimation scaleUp = new DoubleAnimation(1, 15, TimeSpan.FromMilliseconds(300)) { 
-                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn } 
-                };
-                DoubleAnimation fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300)) {
-                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
-                };
-
-                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleUp);
-                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleUp);
-                fakeIcon.BeginAnimation(UIElement.OpacityProperty, fadeOut);
-
-                // Даем анимации чуть-чуть времени и запускаем настоящую программу
-                await Task.Delay(100); 
-                try {
-                    Process.Start(new ProcessStartInfo(app.AppPath) { UseShellExecute = true });
-                } catch { }
-
-                // Ждем окончания анимации и удаляем невидимое окно
-                await Task.Delay(250);
-                illusionWindow.Close();
-            }
-        }
-
-        private void ExitMenu_Click(object sender, RoutedEventArgs e)
-        {
-            Application.Current.Shutdown();
-        }
-
-        private void Window_SourceInitialized(object sender, EventArgs e)
-        {
-            IntPtr hwnd = new WindowInteropHelper(this).Handle;
-            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
-            this.Top = SystemParameters.PrimaryScreenHeight - this.Height;
-        }
-    }
-}
+                            <!-- САМА КАРТИНКА ПРИЛОЖЕНИЯ -->
+                            <Image Source="{Binding IconImage}" Stretch="Uniform">
+                                <Image.Effect>
+                                    <!-- Легкая тень под самой иконкой для объема -->
+                                    <DropShadowEffect Color="Black" BlurRadius="5" ShadowDepth="2" Opacity="0.4"/>
+                                </Image.Effect>
+                            </Image>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</Window>
