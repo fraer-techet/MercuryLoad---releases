@@ -36,21 +36,21 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid VerticalAlignment="Bottom">
-                            
-                            <!-- ИСПРАВЛЕНИЕ: Базовый масштаб теперь 1 (100% видимость) -->
-                            <Grid.LayoutTransform>
-                                <ScaleTransform ScaleX="1" ScaleY="1"/>
-                            </Grid.LayoutTransform>
+                        <!-- Заменили глючный LayoutTransform на безопасную анимацию ширины -->
+                        <Grid VerticalAlignment="Bottom" ClipToBounds="True">
                             
                             <Grid.Style>
                                 <Style TargetType="Grid">
+                                    <!-- Ширина 52 (40 иконка + по 6 пикселей отступы по бокам) -->
+                                    <Setter Property="Width" Value="52"/>
+                                    <Setter Property="Opacity" Value="1"/>
                                     <Style.Triggers>
-                                        <!-- ПЛАВНОЕ ПОЯВЛЕНИЕ (Прыгает в 0 и растет до 1) -->
+                                        
+                                        <!-- ПЛАВНОЕ ПОЯВЛЕНИЕ -->
                                         <EventTrigger RoutedEvent="Loaded">
                                             <BeginStoryboard>
                                                 <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.LayoutTransform).(ScaleTransform.ScaleX)" From="0" To="1" Duration="0:0:0.25">
+                                                    <DoubleAnimation Storyboard.TargetProperty="Width" From="0" To="52" Duration="0:0:0.25">
                                                         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                                     </DoubleAnimation>
                                                     <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25"/>
@@ -63,7 +63,7 @@
                                             <DataTrigger.EnterActions>
                                                 <BeginStoryboard x:Name="CloseAnim">
                                                     <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.LayoutTransform).(ScaleTransform.ScaleX)" To="0" Duration="0:0:0.25">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Width" To="0" Duration="0:0:0.25">
                                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                                         </DoubleAnimation>
                                                         <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25"/>
@@ -72,19 +72,14 @@
                                             </DataTrigger.EnterActions>
                                             <DataTrigger.ExitActions>
                                                 <StopStoryboard BeginStoryboardName="CloseAnim"/>
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.LayoutTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.2"/>
-                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
                                             </DataTrigger.ExitActions>
                                         </DataTrigger>
+                                        
                                     </Style.Triggers>
                                 </Style>
                             </Grid.Style>
 
-                            <StackPanel Margin="6,0,6,0" VerticalAlignment="Bottom">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom">
                                 <Border Width="40" Height="40" Cursor="Hand" MouseLeftButtonUp="AppIcon_Click"
                                         Background="Transparent" ToolTip="{Binding AppName}">
                                     
