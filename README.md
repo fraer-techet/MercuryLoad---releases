@@ -1,28 +1,5 @@
-using System;
-using System.Windows;
+PS C:\MyCustomDock\MacDock> & "C:\Program Files\dotnet\dotnet.exe" run
+C:\MyCustomDock\MacDock\App.xaml.cs(16,17): error CS0104: "MessageBox" является неоднозначной ссылкой между "System.Windows.Forms.MessageBox" и "System.Windows.MessageBox".
+C:\MyCustomDock\MacDock\App.xaml.cs(24,17): error CS0104: "MessageBox" является неоднозначной ссылкой между "System.Windows.Forms.MessageBox" и "System.Windows.MessageBox".
 
-namespace MacDock
-{
-    public partial class App : System.Windows.Application
-    {
-        // Этот метод запускается в самую первую миллисекунду старта программы
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            base.OnStartup(e);
-
-            // 1. Ловим ошибки в интерфейсе (WPF)
-            this.DispatcherUnhandledException += (sender, args) =>
-            {
-                MessageBox.Show("ОШИБКА ИНТЕРФЕЙСА:\n" + args.Exception.Message + "\n\nГде:\n" + args.Exception.StackTrace, "КРАШ!", MessageBoxButton.OK, MessageBoxImage.Error);
-                args.Handled = true; // Пытаемся предотвратить закрытие
-            };
-
-            // 2. Ловим фатальные ошибки глубоко в системе и ядре
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-            {
-                Exception ex = (Exception)args.ExceptionObject;
-                MessageBox.Show("ФАТАЛЬНЫЙ ВЫЛЕТ:\n" + ex.Message + "\n\nГде:\n" + ex.StackTrace, "КРАШ!", MessageBoxButton.OK, MessageBoxImage.Error);
-            };
-        }
-    }
-}
+Ошибка сборки. Устраните ошибки сборки и повторите попытку.
