@@ -1,5 +1,25 @@
-PS C:\MyCustomDock\MacDock> & "C:\Program Files\dotnet\dotnet.exe" run
-C:\MyCustomDock\MacDock\App.xaml.cs(16,17): error CS0104: "MessageBox" является неоднозначной ссылкой между "System.Windows.Forms.MessageBox" и "System.Windows.MessageBox".
-C:\MyCustomDock\MacDock\App.xaml.cs(24,17): error CS0104: "MessageBox" является неоднозначной ссылкой между "System.Windows.Forms.MessageBox" и "System.Windows.MessageBox".
+using System;
+using System.Windows;
 
-Ошибка сборки. Устраните ошибки сборки и повторите попытку.
+namespace MacDock
+{
+    public partial class App : System.Windows.Application
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            this.DispatcherUnhandledException += (sender, args) =>
+            {
+                System.Windows.MessageBox.Show("ОШИБКА:\n" + args.Exception.Message, "КРАШ", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                args.Handled = true; 
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                Exception ex = (Exception)args.ExceptionObject;
+                System.Windows.MessageBox.Show("ФАТАЛЬНЫЙ ВЫЛЕТ:\n" + ex.Message, "КРАШ", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            };
+        }
+    }
+}
