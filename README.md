@@ -1,4 +1,3 @@
-C:\MyCustomDock\macdock\MainWindow.xaml.cs(369,13): error CS0246: Не удалось найти тип или имя пространства имен "SettingsWindow" (возможно, отсутствует директива using или ссылка на сборку).
-C:\MyCustomDock\macdock\MainWindow.xaml.cs(369,37): error CS0246: Не удалось найти тип или имя пространства имен "SettingsWindow" (возможно, отсутствует директива using или ссылка на сборку).
+C:\MyCustomDock\macdock\SettingsWindow.xaml.cs(42,13): error CS0104: "Application" является неоднозначной ссылкой между "System.Windows.Forms.Application" и "System.Windows.Application".
 
 Ошибка сборки. Устраните ошибки сборки и повторите попытку.
